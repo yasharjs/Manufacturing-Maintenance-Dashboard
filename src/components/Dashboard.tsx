@@ -1,7 +1,7 @@
 import { Header } from "./Header";
 import { MachineCard } from "./MachineCard";
 import { AIAssistant } from "./AIAssistant";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 interface DashboardProps {
   onNavigateToDetail: (machineId: string) => void;
@@ -11,37 +11,43 @@ export function Dashboard({ onNavigateToDetail }: DashboardProps) {
   const [aiAssistantOpen, setAiAssistantOpen] = useState(false);
   const [selectedMachine, setSelectedMachine] = useState<string>();
 
-  // Mock data
-  const machines = [
-    {
-      id: "hypet500",
-      name: "HyPET500",
-      status: "critical" as const,
-      moldTemperature: 28,
-      injectionPressure: 145,
-      efficiency: 72,
-      faults: [
-        { id: "101", message: "Fault 101: High temperature detected" },
-        { id: "132", message: "Fault 132: Efficiency below threshold" }
-      ]
-    },
-    {
-      id: "hypet400",
-      name: "HyPET400",
-      status: "warning" as const,
-      moldTemperature: 24,
-      injectionPressure: 120,
-      efficiency: 88,
-    },
-    {
-      id: "hypet300",
-      name: "HyPET300",
-      status: "operational" as const,
-      moldTemperature: 22,
-      injectionPressure: 110,
-      efficiency: 94,
-    }
-  ];
+  type UIMachine = {
+    id: string;
+    name: string;
+    status: 'operational' | 'warning' | 'critical';
+    moldTemperature: number;
+    injectionPressure: number;
+    efficiency: number;
+    faults?: Array<{ id: string; message: string }>;
+  };
+
+  const [machines, setMachines] = useState<UIMachine[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch('/api/machines');
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        const mapped: UIMachine[] = (data || []).map((m: any) => ({
+          id: String(m.id || '').toLowerCase(),
+          name: m.id,
+          status: m.status,
+          moldTemperature: m?.metrics?.mold_temp_c,
+          injectionPressure: m?.metrics?.injection_pressure_bar,
+          efficiency: m?.metrics?.efficiency_pct,
+          faults: (m?.faults || []).map((f: any) => ({ id: f.code, message: f.label })),
+        }));
+        setMachines(mapped);
+      } catch (e: any) {
+        setError(e?.message || 'Failed to load machines');
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, []);
 
   const plantStatus = machines.some(m => m.status === 'critical') 
     ? 'critical' 
@@ -65,6 +71,13 @@ export function Dashboard({ onNavigateToDetail }: DashboardProps) {
           <p className="text-gray-600 mt-1">Monitor and manage your manufacturing equipment</p>
         </div>
         
+        {error && (
+          <div className="mb-4 text-red-600">Error: {error}</div>
+        )}
+        {loading && (
+          <div className="mb-4 text-gray-600">Loading machines…</div>
+        )}
+
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {machines.map((machine) => (
             <MachineCard

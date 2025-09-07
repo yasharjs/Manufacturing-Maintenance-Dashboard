@@ -45,6 +45,18 @@ MACHINES = [
             {"code": "F042", "label": "Heater drift"},
         ],
     },
+     {
+        "id": "HyPET4001",
+        "status": "warning",
+        "metrics": {
+            "mold_temp_c": 201.7,
+            "injection_pressure_bar": 124.6,
+            "efficiency_pct": 86.5,
+        },
+        "faults": [
+            {"code": "F042", "label": "Heater drift"},
+        ],
+    },
 ]
 
 
